@@ -1,0 +1,42 @@
+#import <Foundation/Foundation.h>
+#import "YPObject.h"
+{{#imports}}#import "{{import}}.h"
+{{/imports}}
+{{newline}}
+{{#imports}}@class {{import}};
+{{/imports}}
+
+{{#models}}
+{{#model}}
+
+{{newline}}
+@interface {{classname}} : YPObject
+
+{{#vars}}
+@property(nonatomic) {{datatype}} {{name}};  {{#description}}/* {{{description}}} {{#isNotRequired}}[optional]{{/isNotRequired}} */{{/description}}{{newline}}
+{{/vars}}
+
+- (id) {{#vars}}{{name}}: ({{datatype}}) {{name}}{{#hasMore}}{{newline}}     {{/hasMore}}{{^hasMore}};{{/hasMore}}
+       {{/vars}}
+{{newline}}
+- (id) initWithValues: (NSDictionary*)dict;
+- (NSDictionary*) asDictionary;
+//- (void)createObj:(NSDictionary*)dict;
+{{newline}}
+{{#vars}}
+{{#isPrimitiveType}}
+- ({{datatype}})get{{name}}Value;{{newline}}
+{{/isPrimitiveType}}
+{{#complexType}}
+{{#isContainer}}
+- ({{datatype}})get{{name}}Value;{{newline}}
+{{/isContainer}}
+{{#isNotContainer}}
+- ({{datatype}})get{{name}}Value:(NSError**)err;{{newline}}
+{{/isNotContainer}}
+{{/complexType}}
+{{/vars}}
+{{newline}}
+@end
+{{/model}}
+{{/models}}

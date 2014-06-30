@@ -1,0 +1,73 @@
+package {{package}};
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.youpers.utils.JsonUtil;
+
+{{#imports}}import {{import}};
+{{/imports}}
+{{#models}}
+{{#model}}
+public class {{classname}} extends ObjectYP {
+  {{#vars}}
+
+  {{#description}}/* {{{description}}} */
+  {{/description}}
+  @JsonProperty("{{name}}")
+  private {{{datatype}}} {{name}} = {{{defaultValue}}};
+  {{/vars}}
+  
+  {{#vars}}
+
+  public {{{datatype}}} {{getter}}() {
+    return {{name}};
+  }
+
+  {{#isPrimitiveType}}
+  public void {{setter}}({{{datatype}}} {{name}}) {
+      this.{{name}} = {{name}};
+  }
+  {{/isPrimitiveType}}
+  {{#complexType}}
+  {{#isContainer}}
+  public void {{setter}}({{{datatype}}} {{name}}) {
+    this.{{name}} = {{name}};
+  }
+  {{/isContainer}}
+  {{#isNotContainer}}
+  public void {{setter}}(Object {{name}})
+  {
+      if({{name}} instanceof String)
+      {
+          String strId;
+          strId = (String){{name}};
+
+          {{{datatype}}} obj = new {{{datatype}}}();
+          obj.setId(strId);
+          obj.setIsLoaded(false);
+          this.{{name}} = obj;
+      }
+      else
+      {
+          {{{datatype}}} obj = JsonUtil.getJsonMapper().convertValue({{name}}, {{{datatype}}}.class);
+          obj.setIsLoaded(true);
+          this.{{name}} = obj;
+      }
+  }
+  {{/isNotContainer}}
+  {{/complexType}}
+  {{/vars}}
+
+  @Override
+  public String toString()  {
+    StringBuilder sb = new StringBuilder();
+    sb.append("class {{classname}} {\n");
+    {{#vars}}
+    sb.append("  {{name}}: ").append({{name}}).append("\n");
+    {{/vars}}
+    sb.append("  isLoaded: ").append(getIsLoaded()).append("\n");
+    sb.append("}\n");
+    return sb.toString();
+  }
+}
+{{/model}}
+{{/models}}

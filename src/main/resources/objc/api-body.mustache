@@ -1,0 +1,241 @@
+{{#operations}}
+    #import "{{classname}}.h"
+    #import "YPFile.h"
+    #import "YPApiClient.h"
+    {{#imports}}#import "{{import}}.h"
+    {{/imports}}
+    {{newline}}
+
+
+    @implementation {{classname}}
+    static NSString * basePath = @"{{basePath}}";
+
+    +({{classname}}*) apiWithHeader:(NSString*)headerValue key:(NSString*)key {
+    static {{classname}}* singletonAPI = nil;
+
+    if (singletonAPI == nil) {
+    singletonAPI = [[{{classname}} alloc] init];
+    [singletonAPI addHeader:headerValue forKey:key];
+    }
+    return singletonAPI;
+    }
+
+    +(void) setBasePath:(NSString*)path {
+    basePath = path;
+    }
+
+    +(NSString*) getBasePath {
+    return basePath;
+    }
+
+    -(YPApiClient*) apiClient {
+    return [YPApiClient sharedClientFromPool:basePath];
+    }
+
+    -(void) addHeader:(NSString*)value forKey:(NSString*)key {
+    [[self apiClient] setHeaderValue:value forKey:key];
+    }
+
+    -(id) init {
+    self = [super init];
+    [self apiClient];
+    return self;
+    }
+
+    -(void) setHeaderValue:(NSString*) value
+    forKey:(NSString*)key {
+    [[self apiClient] setHeaderValue:value forKey:key];
+    }
+
+    -(unsigned long) requestQueueSize {
+    return [YPApiClient requestQueueSize];
+    }
+
+
+    {{#operation}}
+        -(NSNumber*) {{nickname}}WithCompletionBlock{{^allParams}}: {{/allParams}}{{#allParams}}{{#secondaryParam}} {{paramName}}{{/secondaryParam}}:({{{dataType}}}) {{paramName}}{{newline}}        {{/allParams}}
+        {{#returnBaseType}}{{#hasParams}}completionHandler: {{/hasParams}}(void (^)({{returnType}} output, YPError* error))completionBlock{{/returnBaseType}}
+        {{^returnBaseType}}{{#hasParams}}completionHandler: {{/hasParams}}(void (^)(YPError* error))completionBlock{{/returnBaseType}} {
+
+        NSMutableString* requestUrl = [NSMutableString stringWithFormat:@"%@{{path}}", basePath];
+
+        // remove format in URL if needed
+        if ([requestUrl rangeOfString:@".{format}"].location != NSNotFound)
+        [requestUrl replaceCharactersInRange: [requestUrl rangeOfString:@".{format}"] withString:@".json"];
+
+        {{#pathParams}}[requestUrl replaceCharactersInRange: [requestUrl rangeOfString:[NSString stringWithFormat:@"%@%@%@", @"{", @"{{baseName}}", @"}"]] withString: [YPApiClient escape:{{paramName}}]];
+        {{/pathParams}}
+
+        NSString* requestContentType = @"application/json";
+        NSString* responseContentType = @"application/json";
+
+        NSMutableDictionary* queryParams = [[NSMutableDictionary alloc] init];
+        {{#queryParams}}if({{paramName}} != nil)
+        queryParams[@"{{baseName}}"] = {{paramName}};
+        {{/queryParams}}
+        NSMutableDictionary* headerParams = [[NSMutableDictionary alloc] init];
+
+
+        {{#headerParams}}if({{paramName}} != nil)
+        headerParams[@"{{baseName}}"] = {{paramName}};
+        {{/headerParams}}
+
+        id bodyDictionary = nil;
+        {{#bodyParam}}
+            if(body != nil && [body isKindOfClass:[NSArray class]]){
+            NSMutableArray * objs = [[NSMutableArray alloc] init];
+            for (id dict in (NSArray*)body) {
+            if([dict respondsToSelector:@selector(asDictionary)]) {
+            [objs addObject:[(YPObject*)dict asDictionary]];
+            }
+            else{
+            [objs addObject:dict];
+            }
+            }
+            bodyDictionary = objs;
+            }
+            else if([body respondsToSelector:@selector(asDictionary)]) {
+            bodyDictionary = [(YPObject*)body asDictionary];
+            }
+            else if([body isKindOfClass:[NSString class]]) {
+            // convert it to a dictionary
+            NSError * error;
+            NSString * str = (NSString*)body;
+            NSDictionary *JSON =
+            [NSJSONSerialization JSONObjectWithData:[str dataUsingEncoding:NSUTF8StringEncoding]
+            options:NSJSONReadingMutableContainers
+            error:&error];
+            bodyDictionary = JSON;
+            }
+            else if([body isKindOfClass: [YPFile class]]) {
+            requestContentType = @"form-data";
+            bodyDictionary = body;
+            }
+            else{
+            NSLog(@"don't know what to do with %@", body);
+            }
+
+        {{/bodyParam}}
+
+        {{#requiredParamCount}}
+            {{#requiredParams}}
+                if({{paramName}} == nil) {
+                // error
+                }
+            {{/requiredParams}}
+        {{/requiredParamCount}}
+
+        YPApiClient* client = [YPApiClient sharedClientFromPool:basePath];
+
+        {{#returnContainer}}
+            return [client dictionary: requestUrl
+            method: @"{{httpMethod}}"
+            queryParams: queryParams
+            body: bodyDictionary
+            headerParams: headerParams
+            requestContentType: requestContentType
+            responseContentType: responseContentType
+            completionBlock: ^(NSDictionary *data, YPError *error) {
+            if (error) {
+            {{#returnBaseType}}completionBlock(nil, error);{{/returnBaseType}}
+            {{^returnBaseType}}completionBlock(error);{{/returnBaseType}}
+            return;
+            }
+
+            {{#returnBaseType}}
+                if([data isKindOfClass:[NSArray class]]){
+                NSMutableArray * objs = [[NSMutableArray alloc] initWithCapacity:[data count]];
+                {{#returnTypeIsPrimitive}}
+                    for (NSString* str in (NSArray*)data) {
+                    // {{#instantiationType}}NSClassFromString(@"{{{instantiationType}}}"){{/instantiationType}}{{^instantiationType}}{{{returnBaseType}}}{{/instantiationType}}{{newline}}
+                    {{returnBaseType}}* d = [[{{#instantiationType}}NSClassFromString(@"{{{instantiationType}}}") {{/instantiationType}}{{^instantiationType}}{{{returnBaseType}}} {{/instantiationType}} alloc]initWithString: str];
+                {{/returnTypeIsPrimitive}}
+                {{^returnTypeIsPrimitive}}
+                    for (NSDictionary* dict in (NSArray*)data) {
+                    {{{returnBaseType}}}* d = [[{{#instantiationType}}NSClassFromString(@"{{{instantiationType}}}") {{/instantiationType}}{{^instantiationType}}{{{returnBaseType}}} {{/instantiationType}} alloc]initWithValues: dict];
+                {{/returnTypeIsPrimitive}}
+                [objs addObject:d];
+                }
+                completionBlock(objs, nil);
+                }
+                {{#returnSimpleType}}
+                    {{#returnTypeIsPrimitive}}{{#returnBaseType}}completionBlock( [[{{#instantiationType}}NSClassFromString(@"{{{instantiationType}}}") {{/instantiationType}}{{^instantiationType}}{{{returnBaseType}}} {{/instantiationType}} alloc]initWithString: data], nil;{{/returnBaseType}}
+                    {{/returnTypeIsPrimitive}}
+                    {{^returnTypeIsPrimitive}}
+                        {{#returnBaseType}}completionBlock( [[{{#instantiationType}}NSClassFromString(@"{{{instantiationType}}}") {{/instantiationType}}{{^instantiationType}}{{{returnBaseType}}} {{/instantiationType}} alloc]initWithValues: data], nil);{{/returnBaseType}}
+                    {{/returnTypeIsPrimitive}}
+                {{/returnSimpleType}}
+
+            {{/returnBaseType}}
+            }];
+        {{/returnContainer}}
+
+        {{#returnSimpleType}}
+            {{#returnTypeIsPrimitive}}
+                {{#returnBaseType}}
+                    return [client stringWithCompletionBlock:requestUrl
+                    method:@"{{httpMethod}}"
+                    queryParams:queryParams
+                    body:bodyDictionary
+                    headerParams:headerParams
+                    requestContentType: requestContentType
+                    responseContentType: responseContentType
+                    completionBlock:^(NSString *data, YPError *error) {
+                    if (error) {
+                    completionBlock(nil, error);
+                    return;
+                    }
+                    {{returnBaseType}} *result = data ? [[{{#instantiationType}}NSClassFromString(@"{{{instantiationType}}}") {{/instantiationType}}{{^instantiationType}}{{{returnBaseType}}} {{/instantiationType}} alloc]initWithString: data] : nil;
+                    completionBlock(result, nil);
+                    }];
+                {{/returnBaseType}}
+                {{^returnBaseType}}
+                    return [client stringWithCompletionBlock:requestUrl
+                    method:@"{{httpMethod}}"
+                    queryParams:queryParams
+                    body:bodyDictionary
+                    headerParams:headerParams
+                    requestContentType: requestContentType
+                    responseContentType: responseContentType
+                    completionBlock:^(NSString *data, YPError *error) {
+                    if (error) {
+                    completionBlock(error);
+                    return;
+                    }
+                    completionBlock(nil);
+                    }];
+                {{/returnBaseType}}
+            {{/returnTypeIsPrimitive}}
+            {{#returnBaseType}}
+                {{^returnTypeIsPrimitive}}
+                    return [client dictionary:requestUrl
+                    method:@"{{httpMethod}}"
+                    queryParams:queryParams
+                    body:bodyDictionary
+                    headerParams:headerParams
+                    requestContentType:requestContentType
+                    responseContentType:responseContentType
+                    completionBlock:^(NSDictionary *data, YPError *error) {
+                    if (error) {
+                    {{#returnBaseType}}completionBlock(nil, error);{{/returnBaseType}}
+                    {{^returnBaseType}}completionBlock(error);{{/returnBaseType}}
+                    return;
+                    }
+                    {{#returnBaseType}}
+                        {{returnBaseType}} *result = nil;
+                        if (data) {
+                        result = [[{{#instantiationType}}NSClassFromString(@"{{{instantiationType}}}") {{/instantiationType}}{{^instantiationType}}{{{returnBaseType}}} {{/instantiationType}}   alloc]initWithValues: data];
+                        }
+                        {{#returnBaseType}}completionBlock(result , nil);{{/returnBaseType}}
+                    {{/returnBaseType}}
+                    }];
+                {{/returnTypeIsPrimitive}}
+            {{/returnBaseType}}
+        {{/returnSimpleType}}
+        {{newline}}
+        }
+    {{/operation}}
+
+    {{newline}}
+{{/operations}}
+@end

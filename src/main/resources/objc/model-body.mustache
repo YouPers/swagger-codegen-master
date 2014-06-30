@@ -1,0 +1,155 @@
+{{#models}}
+{{#model}}
+#import "YPDate.h"
+#import "{{classname}}.h"
+
+@implementation {{classname}}
+
+-(id){{#vars}}{{name}}: ({{datatype}}) {{name}}{{#hasMore}}{{newline}}    {{/hasMore}}{{/vars}}{{newline}}
+{
+    {{#vars}}_{{name}} = {{name}};
+    {{/vars}}
+
+    return self;
+}
+
+-(id) initWithValues:(NSDictionary*)dict
+{
+    self = [super initWithValues:dict];
+    if(self) {
+    {{#vars}}
+    {{#isPrimitiveType}}
+        _{{name}} = dict[@"{{baseName}}"];
+    {{/isPrimitiveType}}
+    {{#complexType}}
+        id {{name}}_dict = dict[@"{{baseName}}"];
+        {{#isContainer}}
+        if([{{name}}_dict isKindOfClass:[NSArray class]])
+        {
+            NSMutableArray * objs = [[NSMutableArray alloc] initWithCapacity:[(NSArray*){{name}}_dict count]];
+
+            if([(NSArray*){{name}}_dict count] > 0)
+            {
+            	{{{complexType}}}* d;
+            	
+                for (NSDictionary* dict in (NSArray*){{name}}_dict)
+                {
+                    if([dict isKindOfClass:[NSString class]])
+                    {
+                    	d = [[{{#instantiationType}}NSClassFromString(@"{{{instantiationType}}}") {{/instantiationType}}{{^instantiationType}}{{{complexType}}} {{/instantiationType}} alloc] initWithObjectId:(NSString*)dict];
+                    }
+                    else
+                    {
+                    	d = [[{{#instantiationType}}NSClassFromString(@"{{{instantiationType}}}") {{/instantiationType}}{{^instantiationType}}{{{complexType}}} {{/instantiationType}} alloc] initWithValues:dict];
+                    }
+                    
+                    [objs addObject:d];
+                }
+
+                _{{{name}}} = [[NSArray alloc] initWithArray:objs];
+            }
+            else
+            {
+                _{{name}} = [[NSArray alloc] init];
+            }
+        }
+        else
+        {
+            _{{name}} = [[NSArray alloc] init];
+        }
+        {{/isContainer}}
+        {{#isNotContainer}}
+        if({{name}}_dict != nil)
+        {
+            if([{{name}}_dict isKindOfClass:[NSString class]])
+            {
+                _{{name}} = [[{{#instantiationType}}NSClassFromString(@"{{{instantiationType}}}") {{/instantiationType}}{{^instantiationType}}{{{complexType}}} {{/instantiationType}} alloc]initWithObjectId:{{name}}_dict];
+            }
+            else
+            {
+                _{{name}} = [[{{#instantiationType}}NSClassFromString(@"{{{instantiationType}}}") {{/instantiationType}}{{^instantiationType}}{{{complexType}}} {{/instantiationType}} alloc]initWithValues:{{name}}_dict];
+            }
+        }
+        {{/isNotContainer}}
+    {{/complexType}}
+    {{/vars}}{{newline}}
+    }
+
+    return self;
+}
+
+-(NSDictionary*) asDictionary
+{
+    NSMutableDictionary* dict = [[NSMutableDictionary alloc] init];
+    {{#vars}}
+    {{#complexType}}
+    if(_{{name}} != nil)
+    {
+        if([_{{name}} isKindOfClass:[NSArray class]])
+        {
+            NSMutableArray * array = [[NSMutableArray alloc] init];
+            for( {{complexType}} *{{name}} in (NSArray*)_{{name}})
+            {
+                [array addObject:[(YPObject*){{name}} asDictionary]];
+            }
+
+            dict[@"{{name}}"] = array;
+        }
+        else if(_{{name}} && [_{{name}} isKindOfClass:[YPDate class]])
+        {
+            NSString * dateString = [(YPDate*)_{{name}} toString];
+            if(dateString)
+            {
+                dict[@"{{name}}"] = dateString;
+            }
+        }
+        else
+        {
+        {{/complexType}}
+            if(_{{name}} != nil) dict[@"{{baseName}}"] = {{#complexType}}[(YPObject*){{/complexType}}_{{name}} {{#complexType}}asDictionary]{{/complexType}};
+        {{#complexType}}
+        }
+    }
+    {{/complexType}}
+    {{/vars}}
+
+    NSDictionary* output = [dict copy];
+    return output;
+}
+
+/*- (void) createObj:(NSDictionary*)dict {
+    NSLog(dict);
+}*/
+
+{{#vars}}
+{{#isPrimitiveType}}
+- ({{datatype}})get{{name}}Value
+{
+    return _{{name}};
+}
+{{/isPrimitiveType}}
+{{#complexType}}
+{{#isContainer}}
+- ({{datatype}})get{{name}}Value
+{
+    return _{{name}};
+}
+{{/isContainer}}
+{{#isNotContainer}}
+- ({{datatype}})get{{name}}Value:(NSError**)err
+{
+    if(!_{{name}}.isLoaded)
+    {
+        NSDictionary *userInfo = @{NSLocalizedDescriptionKey: @"The object is not loaded"};
+        *err = [NSError errorWithDomain:@"com.youpers" code:101 userInfo:userInfo];
+    }
+    return _{{name}};
+}
+{{/isNotContainer}}
+{{/complexType}}
+{{newline}}
+{{/vars}}
+
+{{/model}}
+@end
+{{/models}}
