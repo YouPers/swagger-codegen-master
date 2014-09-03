@@ -93,7 +93,7 @@ class Codegen(config: CodegenConfig) {
     val f = new ListBuffer[AnyRef]
     classNameToOperationList.map(m => f += Map("classname" -> m._1, "operation" -> m._2))
 
-    val imports = nexw ListBuffer[Map[String, String]]
+    val imports = new ListBuffer[Map[String, String]]
     val importScope = config.modelPackage match {
       case Some(s) => s + "."
       case None => ""

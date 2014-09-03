@@ -40,6 +40,7 @@ class BasicAndroidJavaGenerator extends BasicJavaGenerator {
     "Byte",
     "Float",
     "Double",
+    "double",
     "Boolean",
     "AnyRef",
     "Any")
